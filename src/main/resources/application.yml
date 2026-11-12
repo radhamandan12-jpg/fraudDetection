@@ -2,10 +2,10 @@ spring:
   application:
     name: fraud-capstone
   datasource:
-    url: jdbc:h2:mem:fraudcapstone;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: ""
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:fraud_capstone}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USER:fraudapp}
+    password: ${DB_PASSWORD:fraudapp123}
   jpa:
     hibernate:
       ddl-auto: update

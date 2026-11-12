@@ -5,7 +5,7 @@
 - `mvn compile` / `mvn test` / `mvn spring-boot:run`
 - Java 21, Maven, Spring Boot 3.5.14, Spring AI 1.1.8, LangChain4j 1.22.0
 - Tests run in rules mode only — no API key needed. All 33 tests must pass.
-- App runs on H2 in-memory by default (port 8090); `application-example.yml` documents overrides.
+- App runs on MySQL `fraud_capstone` by default (port 8090); creds via `DB_USER`/`DB_PASSWORD` env vars (defaults `fraudapp`/`fraudapp123`). Tests run on H2 in-memory via `src/test/resources/application-test.yml`. `application-example.yml` documents overrides.
 
 ## Key invariants — do not break
 

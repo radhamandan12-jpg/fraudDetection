@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * End-to-end contract test in rules mode: intake -> investigate ->
  * evidence/traces/recommendation/citations -> follow-up -> review -> close.
  */
-@SpringBootTest(properties = {"capstone.processor-mode=rules"})
+@SpringBootTest(properties = {"capstone.processor-mode=rules", "spring.profiles.active=test"})
 @AutoConfigureMockMvc
 class ApiIntegrationTest {
 

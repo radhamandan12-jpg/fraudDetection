@@ -49,7 +49,7 @@ Both adapters sit **behind the same contract** and share the same:
 
 ```bash
 cd fraud-capstone
-mvn spring-boot:run            # rules mode, H2 in-memory, port 8090
+mvn spring-boot:run            # rules mode, MySQL (fraud_capstone), port 8090
 PROCESSOR_MODE=spring-ai mvn spring-boot:run      # needs ANTHROPIC_API_KEY
 PROCESSOR_MODE=langchain4j mvn spring-boot:run    # needs ANTHROPIC_API_KEY
 ```
@@ -65,7 +65,11 @@ PROCESSOR_MODE=spring-ai ANTHROPIC_BASE_URL=$LLM_BASE_URL \
   ANTHROPIC_MODEL=global.anthropic.claude-sonnet-4-6 mvn spring-boot:run
 ```
 
-UI: http://localhost:8090  ·  API: `/api/cases`  ·  H2 console: `/h2-console`
+UI: http://localhost:8090  ·  API: `/api/cases`
+
+Database: MySQL `fraud_capstone` on localhost:3306 (user `fraudapp`, override with
+`DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER`/`DB_PASSWORD`). Tests use H2 in-memory via
+`src/test/resources/application-test.yml` — no MySQL needed for `mvn test`.
 
 Analyst/reviewer identity is taken from `X-Analyst-Id` / `X-Reviewer-Id` headers
 (defaults `agent-anon`/`reviewer-anon`) — a real deployment must put
