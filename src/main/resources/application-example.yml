@@ -1,0 +1,43 @@
+# Example configuration showing all three processor modes.
+# Copy to application.yml or override with env vars.
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:fraudcapstone;DB_CLOSE_DELAY=-1
+    # For a persistent store instead:
+    # url: jdbc:h2:file:./data/fraudcapstone
+    # url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/fraud_capstone?createDatabaseIfNotExist=true
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:${CLAUDE_API_KEY:not-configured}}
+      base-url: ${ANTHROPIC_BASE_URL:${LLM_BASE_URL:https://api.anthropic.com}}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+          max-tokens: 2048
+          temperature: 0.2
+
+capstone:
+  processor-mode: rules        # rules | spring-ai | langchain4j
+  human-review-required: true  # every recommendation requires a human disposition
+  allow-financial-actions: false
+  allow-customer-contact: false
+  retrieval:
+    top-k: 4
+    similarity-threshold: 0.35
+  memory:
+    max-messages: 12           # bounded, case-keyed; never shared across cases
+  tools:
+    timeout-ms: 2500
+    deterministic-seed: fraud-training-v1
+  langchain4j:                 # used only in langchain4j mode
+    api-key: ${ANTHROPIC_API_KEY:${CLAUDE_API_KEY:not-configured}}
+    # LangChain4j appends /messages to base-url, so it must include /v1.
+    base-url: ${LC4J_BASE_URL:${ANTHROPIC_BASE_URL:${LLM_BASE_URL:https://api.anthropic.com}}/v1}
+    model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+    temperature: 0.2
+    max-tokens: 2048
+    timeout-seconds: 60
+
+server:
+  port: 8090

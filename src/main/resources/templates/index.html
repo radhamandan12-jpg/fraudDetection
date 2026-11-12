@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FraudDesk — Cases</title>
+<link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <a class="sbrand" href="/"><span class="logo">◈</span><span>Fraud<span class="thin">Desk</span></span></a>
+    <div class="ssec">Workspace</div>
+    <a class="snav active" href="/"><span class="ico">▦</span> Cases</a>
+    <a class="snav" href="/cases/new"><span class="ico">✚</span> New case</a>
+    <div class="ssec">System</div>
+    <a class="snav" href="/h2-console" target="_blank"><span class="ico">⛁</span> H2 console</a>
+    <div class="sfoot">
+      <span class="sbadge">● AGENT ONLINE</span>
+      <div class="stiny">Human-in-the-loop ·<br>synthetic data only</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="crumb">Workspace / <b>Cases</b></span>
+      <span class="tright"><span class="dot-live"></span> fraud investigation agent</span>
+    </div>
+
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <h1>Dispute cases</h1>
+          <div class="sub-h">Intelligent Payment Fraud Investigation &amp; Dispute Resolution</div>
+        </div>
+        <div class="actions"><a class="btn" href="/cases/new">＋ New case</a></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat t-indigo">
+          <span class="sicon">▦</span>
+          <div class="num" th:text="${cases.size()}">0</div><div class="lbl">Total cases</div>
+        </div>
+        <div class="stat t-blue">
+          <span class="sicon">◔</span>
+          <div class="num" th:text="${#lists.isEmpty(cases) ? 0 : cases.?[status.name() == 'NEW' or status.name() == 'ENRICHING'].size()}">0</div><div class="lbl">Awaiting enrichment</div>
+        </div>
+        <div class="stat t-violet">
+          <span class="sicon">◎</span>
+          <div class="num" th:text="${#lists.isEmpty(cases) ? 0 : cases.?[status.name() == 'READY_FOR_REVIEW' or status.name() == 'UNDER_REVIEW'].size()}">0</div><div class="lbl">In review</div>
+        </div>
+        <div class="stat t-green">
+          <span class="sicon">✓</span>
+          <div class="num" th:text="${#lists.isEmpty(cases) ? 0 : cases.?[status.name() == 'ROUTED' or status.name() == 'CLOSED'].size()}">0</div><div class="lbl">Resolved</div>
+        </div>
+      </div>
+
+      <div class="card tablewrap">
+        <h2>All cases</h2>
+        <table class="data">
+          <thead><tr>
+            <th>Case</th><th>Status</th><th>Customer ref</th><th>Merchant</th>
+            <th>Issue</th><th>Amount</th><th>Reported</th><th>Created by</th>
+          </tr></thead>
+          <tbody>
+            <tr th:each="c : ${cases}">
+              <td><a class="mono caselink" th:href="@{/cases/{id}(id=${c.caseId})}" th:text="${c.caseId}">CASE</a></td>
+              <td><span class="pill" th:classappend="${c.status}" th:text="${c.status}">NEW</span></td>
+              <td class="mono" th:text="${c.maskedCustomerRef}">CUST-****</td>
+              <td class="mono" th:text="${c.maskedMerchant}">MRC-</td>
+              <td th:text="${c.issueType}">-</td>
+              <td><b th:text="${c.amount}"></b> <span class="hint" th:text="${c.currency}"></span></td>
+              <td th:text="${#temporals.format(c.reportedAt,'yyyy-MM-dd HH:mm')}">-</td>
+              <td th:text="${c.createdBy}">-</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(cases)}">
+              <td colspan="8" style="text-align:center;color:var(--muted);padding:36px">
+                No cases yet — <a href="/cases/new">create the first one</a>.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="footer-note">Masked/tokenised references only · every recommendation requires human review</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

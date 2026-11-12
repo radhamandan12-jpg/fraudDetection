@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FraudDesk — New case</title>
+<link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <a class="sbrand" href="/"><span class="logo">◈</span><span>Fraud<span class="thin">Desk</span></span></a>
+    <div class="ssec">Workspace</div>
+    <a class="snav" href="/"><span class="ico">▦</span> Cases</a>
+    <a class="snav active" href="/cases/new"><span class="ico">✚</span> New case</a>
+    <div class="ssec">System</div>
+    <a class="snav" href="/h2-console" target="_blank"><span class="ico">⛁</span> H2 console</a>
+    <div class="sfoot">
+      <span class="sbadge">● AGENT ONLINE</span>
+      <div class="stiny">Human-in-the-loop ·<br>synthetic data only</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="crumb"><a href="/">Cases</a> / <b>New case</b></span>
+      <span class="tright"><span class="dot-live"></span> intake — guided, masked, validated</span>
+    </div>
+
+    <div class="page" style="max-width:880px">
+      <div class="page-head">
+        <div>
+          <h1>New dispute case</h1>
+          <div class="sub-h">Intake validates mandatory fields and rejects unmasked identifiers.</div>
+        </div>
+      </div>
+
+      <div class="alert info">
+        <span>ℹ</span>
+        <span><b>Masked references only.</b> Never enter full card or account numbers — they are rejected server-side.
+        Scenario markers for the synthetic evidence adapter:
+        <span class="mono">TXN-FRAUD-*</span>, <span class="mono">TXN-DUP-*</span>,
+        <span class="mono">TXN-GENUINE-*</span>, <span class="mono">TXN-MISSING-*</span>.</span>
+      </div>
+      <div class="alert err" th:if="${error}" th:text="${error}"></div>
+
+      <form method="post" action="/cases" class="card">
+        <fieldset class="fieldset"><legend>Case &amp; customer</legend>
+          <div class="frow c2">
+            <div><label class="f">Report channel</label>
+              <select name="channel"><option th:each="c : ${channels}" th:value="${c}" th:text="${c}"></option></select></div>
+            <div><label class="f">Masked customer ref</label>
+              <input type="text" name="maskedCustomerRef" value="CUST-8842" required></div>
+          </div>
+          <label class="f">Home region</label>
+          <input type="text" name="homeRegion" value="EU-IE">
+        </fieldset>
+
+        <fieldset class="fieldset"><legend>Transaction</legend>
+          <div class="frow c2">
+            <div><label class="f">Transaction ref</label>
+              <input type="text" name="transactionRef" value="TXN-FRAUD-0042" required></div>
+            <div><label class="f">Masked merchant</label>
+              <input type="text" name="maskedMerchant" value="MRC-UNRECOGNISED-77" required></div>
+          </div>
+          <div class="frow c3">
+            <div><label class="f">Amount</label>
+              <input type="number" name="amount" step="0.01" value="129.99" required></div>
+            <div><label class="f">Currency</label>
+              <input type="text" name="currency" value="EUR" maxlength="3" required></div>
+            <div><label class="f">Status</label>
+              <select name="transactionStatus"><option th:each="s : ${txnStatuses}" th:value="${s}" th:text="${s}"></option></select></div>
+          </div>
+          <label class="f">Channel</label>
+          <select name="transactionChannel"><option th:each="t : ${txnChannels}" th:value="${t}" th:text="${t}"></option></select>
+        </fieldset>
+
+        <fieldset class="fieldset"><legend>Claim</legend>
+          <div class="frow c3">
+            <div><label class="f">Issue type</label>
+              <select name="issueType"><option th:each="i : ${issueTypes}" th:value="${i}" th:text="${i}"></option></select></div>
+            <div><label class="f">Card possession</label>
+              <select name="cardPossession"><option th:each="p : ${possessions}" th:value="${p}" th:text="${p}"></option></select></div>
+            <div><label class="f">Merchant recognised?</label>
+              <select name="merchantRecognised"><option value="false">false</option><option value="true">true</option></select></div>
+          </div>
+          <label class="f">Customer statement</label>
+          <textarea name="customerStatement" rows="3" required>I did not make this purchase. I do not recognise the merchant and still have my card.</textarea>
+        </fieldset>
+
+        <div class="chk"><input type="checkbox" name="syntheticDataConfirmed" id="sdc" checked>
+          <label for="sdc">Synthetic data confirmed</label></div>
+        <div class="chk"><input type="checkbox" name="reviewRequired" id="rr" checked>
+          <label for="rr">Human review required</label></div>
+
+        <div style="margin-top:20px;display:flex;gap:10px;align-items:center">
+          <button class="btn lg" type="submit">Create case</button>
+          <button class="btn ghost" type="button" onclick="clearForm(this.form)">Clear form</button>
+          <a class="btn ghost" href="/">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+function clearForm(f) {
+  f.querySelectorAll('input[type=text], input[type=number], textarea').forEach(el => el.value = '');
+  f.querySelectorAll('select').forEach(el => el.selectedIndex = 0);
+  f.querySelectorAll('input[type=checkbox]').forEach(el => el.checked = el.defaultChecked);
+}
+</script>
+</body>
+</html>

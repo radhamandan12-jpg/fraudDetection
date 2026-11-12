@@ -1,0 +1,16 @@
+INVESTIGATION GOAL:
+{investigationGoal}
+
+VALIDATED CASE FACTS:
+{caseSummary}
+
+TOOL EVIDENCE (structured results already collected by the approved tool plan):
+{toolEvidence}
+
+RETRIEVED POLICY PASSAGES (cite documentId, version, section, chunkId and score exactly):
+{policyContext}
+
+CONVERSATION CONTEXT (case-scoped):
+{conversationContext}
+
+Classify the dispute and recommend a route. Return only the JSON schema object.

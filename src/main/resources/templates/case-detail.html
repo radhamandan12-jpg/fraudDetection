@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title th:text="'Case ' + ${summary.caseId}">Case</title>
+<link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <a class="sbrand" href="/"><span class="logo">◈</span><span>Fraud<span class="thin">Desk</span></span></a>
+    <div class="ssec">Workspace</div>
+    <a class="snav" href="/"><span class="ico">▦</span> Cases</a>
+    <a class="snav" href="/cases/new"><span class="ico">✚</span> New case</a>
+    <div class="ssec">System</div>
+    <a class="snav" href="/h2-console" target="_blank"><span class="ico">⛁</span> H2 console</a>
+    <div class="sfoot">
+      <span class="sbadge">● AGENT ONLINE</span>
+      <div class="stiny">Human-in-the-loop ·<br>synthetic data only</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="crumb"><a href="/">Cases</a> / <b class="mono" th:text="${summary.caseId}">CASE</b></span>
+      <span class="tright"><span class="dot-live"></span> investigation workspace</span>
+    </div>
+
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <h1 class="mono" th:text="${summary.caseId}">CASE</h1>
+          <div class="sub-h"><span class="pill" th:classappend="${summary.status}" th:text="${summary.status}">STATUS</span></div>
+        </div>
+        <div class="actions">
+          <form th:if="${kase.status.name() == 'NEW' or kase.status.name() == 'INCOMPLETE'}"
+                method="post" th:action="@{/cases/{id}/investigate(id=${summary.caseId})}">
+            <button class="btn" type="submit">▶ Run investigation</button>
+          </form>
+          <a class="btn ghost" href="/">← All cases</a>
+        </div>
+      </div>
+      <div class="alert err" th:if="${error}" th:text="${error}"></div>
+
+      <div class="grid2">
+        <!-- ============ LEFT ============ -->
+        <div>
+          <div class="card">
+            <h2>Intake · masked</h2>
+            <dl class="kv">
+              <dt>Customer ref</dt><dd class="mono" th:text="${kase.maskedCustomerRef}"></dd>
+              <dt>Home region</dt><dd th:text="${kase.homeRegion}"></dd>
+              <dt>Transaction</dt><dd><span class="mono" th:text="${claim.transactionRef}"></span> ·
+                <b th:text="${claim.amount} + ' ' + ${claim.currency}"></b> ·
+                <span th:text="${claim.transactionStatus} + ' / ' + ${claim.transactionChannel}"></span></dd>
+              <dt>Merchant</dt><dd class="mono" th:text="${claim.maskedMerchant}"></dd>
+              <dt>Issue</dt><dd><span class="pill info" th:text="${claim.issueType}"></span>
+                · recognised: <b th:text="${claim.merchantRecognised}"></b>
+                · card: <b th:text="${claim.cardPossession}"></b></dd>
+              <dt>Statement</dt><dd th:text="${claim.statement}"></dd>
+              <dt>Reported</dt><dd th:text="${#temporals.format(kase.reportedAt,'yyyy-MM-dd HH:mm')} + ' via ' + ${kase.caseChannel} + ' by ' + ${kase.analystId}"></dd>
+            </dl>
+          </div>
+
+          <div class="card tablewrap" th:if="${!#lists.isEmpty(evidence)}">
+            <h2>Evidence <span class="cnt">· <span th:text="${evidence.size()}"></span> findings</span></h2>
+            <table class="data">
+              <thead><tr><th>ID</th><th>Type</th><th>Sev</th><th>Finding</th><th>Provenance</th></tr></thead>
+              <tbody><tr th:each="e : ${evidence}">
+                <td class="mono" th:text="${e.evidenceId}"></td>
+                <td th:text="${e.type}"></td>
+                <td><span class="sev" th:classappend="${e.severity}" th:text="${e.severity}"></span></td>
+                <td th:text="${e.valueSummary}"></td>
+                <td class="mono" th:text="${e.provenance} + (e.sourceTool != null ? ' · ' + e.sourceTool : '')"></td>
+              </tr></tbody>
+            </table>
+          </div>
+
+          <div class="card" th:if="${!#lists.isEmpty(traces)}">
+            <h2>Tool execution trace <span class="cnt">· redacted</span></h2>
+            <ul class="timeline">
+              <li th:each="t : ${traces}" th:classappend="${t.status.name() != 'OK' ? 'err' : ''}">
+                <div class="t-name"><span th:text="${t.toolName}"></span>
+                  <span class="pill" th:classappend="${t.status.name() == 'OK' ? 'ok' : 'err'}" th:text="${t.status}"></span></div>
+                <div class="t-meta">
+                  <span class="mono" th:text="${t.traceId}"></span> ·
+                  <span th:text="${t.durationMs} + ' ms'"></span> ·
+                  args <span class="mono" th:text="'sha256:' + ${#strings.abbreviate(t.requestHash,12)}"></span>
+                </div>
+                <div class="t-sum" th:text="${t.resultSummary}"></div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h2>Case-scoped follow-up</h2>
+            <div class="chat" id="chat">
+              <div th:each="m : ${messages}" class="bubble" th:classappend="${m.role}">
+                <span class="who" th:text="${m.role}"></span>
+                <span th:text="${m.content}"></span>
+              </div>
+              <div class="hint" th:if="${#lists.isEmpty(messages)}">No questions yet — answers stay scoped to this case only.</div>
+            </div>
+            <form class="chat-input" method="post" th:action="@{/cases/{id}/messages(id=${summary.caseId})}">
+              <textarea name="question" rows="2" placeholder="Ask about this case — same evidence & citation model…" required></textarea>
+              <button class="btn" type="submit">Ask</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- ============ RIGHT ============ -->
+        <div>
+          <div class="card rec" th:if="${recommendation != null}"
+               th:classappend="${recommendation.recommendedRoute.name() == 'FRAUD_INVESTIGATION' ? 'fraud' : (recommendation.recommendedRoute.name() == 'PAYMENT_OPERATIONS' ? 'payops' : (recommendation.recommendedRoute.name() == 'DISPUTE_OPERATIONS' ? 'dispute' : 'manual'))}">
+            <h2>Recommendation</h2>
+            <div class="rec-head">
+              <span class="rec-class" th:text="${recommendation.classification}"></span>
+              <span class="pill info" th:text="${recommendation.recommendedRoute}"></span>
+            </div>
+            <dl class="kv">
+              <dt>Risk</dt><dd><span class="sev" th:classappend="${recommendation.riskLevel.name()}" th:text="${recommendation.riskLevel}"></span></dd>
+              <dt>Confidence</dt><dd>
+                <div class="confbar"><div th:style="'width:' + ${recommendation.confidence * 100} + '%'"></div></div>
+                <span class="mono" th:text="${recommendation.confidence}"></span></dd>
+              <dt>Human review</dt><dd><span class="pill ok" th:text="${recommendation.humanReviewRequired} ? 'REQUIRED' : 'no'"></span></dd>
+              <dt>Rationale</dt><dd th:text="${recommendation.rationale}"></dd>
+              <dt th:if="${!#lists.isEmpty(recommendation.missingInformation)}">Missing</dt>
+              <dd th:if="${!#lists.isEmpty(recommendation.missingInformation)}">
+                <div class="miss" th:each="m : ${recommendation.missingInformation}" th:text="'⚠ ' + ${m}"></div></dd>
+            </dl>
+            <div th:if="${!#lists.isEmpty(recommendation.appliedRules)}">
+              <div class="rule-chip" th:each="r : ${recommendation.appliedRules}">
+                <code th:text="${r.ruleId}"></code> <span th:text="${r.description}"></span>
+                <span class="rule-facts" th:text="'facts: ' + ${#strings.listJoin(r.inputFacts, ' · ')}"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card tablewrap" th:if="${!#lists.isEmpty(citations)}">
+            <h2>Policy citations</h2>
+            <table class="data">
+              <thead><tr><th>Document</th><th>Section</th><th>Chunk</th><th>Score</th></tr></thead>
+              <tbody><tr th:each="c : ${citations}">
+                <td><b th:text="${c.documentId}"></b><br><span class="mono" th:text="'v' + ${c.version}"></span></td>
+                <td th:text="${c.section}"></td>
+                <td class="mono" th:text="${c.chunkId}"></td>
+                <td><span class="pill info" th:text="${c.score}"></span></td>
+              </tr></tbody>
+            </table>
+          </div>
+
+          <div class="card" th:if="${kase.status.name() == 'READY_FOR_REVIEW' or kase.status.name() == 'UNDER_REVIEW'}">
+            <h2>Human review</h2>
+            <form method="post" th:action="@{/cases/{id}/reviews(id=${summary.caseId})}">
+              <label class="f">Disposition</label>
+              <select name="disposition">
+                <option th:each="d : ${dispositions}" th:value="${d}" th:text="${d}"></option>
+              </select>
+              <label class="f">Route <span class="hint">(required for REVISED / REROUTED)</span></label>
+              <select name="selectedRoute">
+                <option value="">— select —</option>
+                <option th:each="r : ${routes}" th:value="${r}" th:text="${r}"></option>
+              </select>
+              <label class="f">Reason <span class="hint">(mandatory)</span></label>
+              <textarea name="reason" rows="2" placeholder="Why this disposition?" required></textarea>
+              <button class="btn" type="submit" style="margin-top:12px">Record disposition</button>
+            </form>
+          </div>
+
+          <div class="card tablewrap" th:if="${!#lists.isEmpty(reviews)}">
+            <h2>Review history</h2>
+            <table class="data">
+              <thead><tr><th>Reviewer</th><th>Disposition</th><th>Route</th><th>At</th></tr></thead>
+              <tbody><tr th:each="r : ${reviews}">
+                <td class="mono" th:text="${r.reviewerId}"></td>
+                <td><span class="pill info" th:text="${r.disposition}"></span><br>
+                  <span class="hint" th:text="${#strings.abbreviate(r.reason,60)}"></span></td>
+                <td th:text="${r.selectedRoute}"></td>
+                <td th:text="${#temporals.format(r.recordedAt,'MM-dd HH:mm')}"></td>
+              </tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="footer-note">Provenance on every fact · no raw payloads in traces · audit events append-only</div>
+    </div>
+  </div>
+</div>
+<script>var c=document.getElementById('chat'); if(c){c.scrollTop=c.scrollHeight;}</script>
+</body>
+</html>
