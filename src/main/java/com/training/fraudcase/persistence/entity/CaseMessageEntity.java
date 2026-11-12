@@ -23,7 +23,7 @@ public class CaseMessageEntity {
     private String role;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
     @Column(nullable = false)

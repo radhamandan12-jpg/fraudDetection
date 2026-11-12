@@ -56,4 +56,30 @@ class SyntheticEvidenceAdapterTest {
         var m = a.merchantRisk("MRC-BLOCK-99");
         assertTrue(m.blocklistMatch());
     }
+
+    @Test
+    void velocityMarkerProducesBurst() {
+        var v = a.transactionVelocity("CUST-VELOCITY-1", "TXN-1");
+        assertTrue(v.countLast10Min() >= 5);
+        assertEquals(AnomalyLevel.HIGH, v.anomalyLevel());
+        var calm = a.transactionVelocity("CUST-8842", "TXN-1");
+        assertTrue(calm.countLast10Min() < 5);
+    }
+
+    @Test
+    void bigAmountMarkerProducesHighDeviation() {
+        var d = a.amountDeviation("CUST-8842", new BigDecimal("600"), "TXN-BIGAMT-1");
+        assertTrue(d.ratioVsBaseline().doubleValue() > 5.0);
+        assertEquals(AnomalyLevel.HIGH, d.anomalyLevel());
+        var normal = a.amountDeviation("CUST-8842", new BigDecimal("600"), "TXN-1");
+        assertTrue(normal.ratioVsBaseline().doubleValue() <= 1.5);
+    }
+
+    @Test
+    void sanctionMarkerProducesScreeningMatch() {
+        var hit = a.sanctionsScreening("CUST-8842", "MRC-SANCTION-1");
+        assertTrue(hit.matchFound());
+        var clean = a.sanctionsScreening("CUST-8842", "MRC-SHOP-12");
+        assertFalse(clean.matchFound());
+    }
 }

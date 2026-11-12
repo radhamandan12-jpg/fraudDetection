@@ -5,6 +5,7 @@ import com.training.fraudcase.domain.enums.ActorType;
 import com.training.fraudcase.domain.enums.ToolOutcome;
 import com.training.fraudcase.knowledge.PolicyRetriever;
 import com.training.fraudcase.persistence.AuditEventWriter;
+import com.training.fraudcase.tools.dto.AmountDeviation;
 import com.training.fraudcase.tools.dto.AuditEventResult;
 import com.training.fraudcase.tools.dto.CaseSla;
 import com.training.fraudcase.tools.dto.DeviceSignals;
@@ -12,7 +13,9 @@ import com.training.fraudcase.tools.dto.LocationComparison;
 import com.training.fraudcase.tools.dto.MerchantRiskProfile;
 import com.training.fraudcase.tools.dto.PolicyEvidenceResult;
 import com.training.fraudcase.tools.dto.PriorDisputes;
+import com.training.fraudcase.tools.dto.ScreeningResult;
 import com.training.fraudcase.tools.dto.TransactionDetails;
+import com.training.fraudcase.tools.dto.TransactionVelocity;
 import dev.langchain4j.agent.tool.P;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +48,8 @@ public class EvidenceTools {
 
     public static final List<String> ALLOWED_TOOLS = List.of(
             "getTransactionDetails", "getDeviceSignals", "compareRecentLocations",
-            "getMerchantRiskProfile", "getPriorDisputes", "calculateCaseSla",
+            "getMerchantRiskProfile", "getPriorDisputes", "getTransactionVelocity",
+            "checkAmountDeviation", "getSanctionsScreening", "calculateCaseSla",
             "retrievePolicyEvidence", "saveAuditEvent");
 
     private final SyntheticEvidenceAdapter adapter;
@@ -124,6 +128,40 @@ public class EvidenceTools {
                 () -> adapter.priorDisputes(maskedCustomerRef),
                 d -> "count=" + d.count() + " similar=" + d.similarCount()
                         + " lookbackDays=" + d.lookbackDays());
+    }
+
+    @org.springframework.ai.tool.annotation.Tool(name = "getTransactionVelocity",
+            description = "Count recent transactions for a masked customer and flag velocity bursts")
+    @dev.langchain4j.agent.tool.Tool("Count recent transactions for a masked customer and flag velocity bursts")
+    public ToolResult<TransactionVelocity> getTransactionVelocity(
+            @ToolParam(description = "Masked customer reference") @P("Masked customer reference") String maskedCustomerRef,
+            @ToolParam(description = "Related transaction reference for context") @P("Related transaction reference for context") String transactionRef) {
+        return invoke("getTransactionVelocity", "cust=" + maskedCustomerRef,
+                () -> adapter.transactionVelocity(maskedCustomerRef, transactionRef),
+                d -> "count10m=" + d.countLast10Min() + " anomaly=" + d.anomalyLevel());
+    }
+
+    @org.springframework.ai.tool.annotation.Tool(name = "checkAmountDeviation",
+            description = "Compare a claimed amount against the customer's baseline spending")
+    @dev.langchain4j.agent.tool.Tool("Compare a claimed amount against the customer's baseline spending")
+    public ToolResult<AmountDeviation> checkAmountDeviation(
+            @ToolParam(description = "Masked customer reference") @P("Masked customer reference") String maskedCustomerRef,
+            @ToolParam(description = "Claimed amount") @P("Claimed amount") BigDecimal claimedAmount,
+            @ToolParam(description = "Related transaction reference for context") @P("Related transaction reference for context") String transactionRef) {
+        return invoke("checkAmountDeviation", "cust=" + maskedCustomerRef,
+                () -> adapter.amountDeviation(maskedCustomerRef, claimedAmount, transactionRef),
+                d -> "ratio=" + d.ratioVsBaseline() + " anomaly=" + d.anomalyLevel());
+    }
+
+    @org.springframework.ai.tool.annotation.Tool(name = "getSanctionsScreening",
+            description = "Run synthetic sanctions/PEP screening for a masked customer and merchant")
+    @dev.langchain4j.agent.tool.Tool("Run synthetic sanctions/PEP screening for a masked customer and merchant")
+    public ToolResult<ScreeningResult> getSanctionsScreening(
+            @ToolParam(description = "Masked customer reference") @P("Masked customer reference") String maskedCustomerRef,
+            @ToolParam(description = "Masked merchant text from intake") @P("Masked merchant text from intake") String maskedMerchant) {
+        return invoke("getSanctionsScreening", "cust=" + maskedCustomerRef,
+                () -> adapter.sanctionsScreening(maskedCustomerRef, maskedMerchant),
+                d -> "match=" + d.matchFound() + " list=" + d.listName());
     }
 
     @org.springframework.ai.tool.annotation.Tool(name = "calculateCaseSla",

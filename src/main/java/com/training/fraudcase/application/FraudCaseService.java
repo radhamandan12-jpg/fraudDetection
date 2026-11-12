@@ -40,7 +40,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
 /**
@@ -69,7 +68,6 @@ public class FraudCaseService {
     private final ProcessorRegistry processorRegistry;
     private final AuditEventWriter audit;
     private final ObjectMapper objectMapper;
-    private final AtomicLong sequence = new AtomicLong();
 
     public FraudCaseService(FraudCaseRepository caseRepo,
                             TransactionClaimRepository claimRepo,
@@ -102,6 +100,12 @@ public class FraudCaseService {
     @Transactional
     public CaseSummaryView createCase(CreateCaseRequest req, String analystId) {
         validateIntake(req);
+        CaseSummaryView open = findOpenDuplicate(req);
+        if (open != null) {
+            audit.append(open.caseId(), "DUPLICATE_INTAKE_RETURNED", ActorType.AGENT,
+                    "identical intake suppressed for " + req.transactionRef() + " by=" + analystId);
+            return open;
+        }
         String caseId = nextCaseId();
         Instant now = Instant.now();
 
@@ -162,9 +166,41 @@ public class FraudCaseService {
         }
     }
 
+    /** Duplicate-intake protection: an identical open case (same transaction
+     *  reference, masked customer and issue type) still in NEW/ENRICHING is
+     *  returned rather than creating a second investigation of the same claim. */
+    private CaseSummaryView findOpenDuplicate(CreateCaseRequest req) {
+        for (TransactionClaimEntity claim : claimRepo.findByTransactionRef(req.transactionRef())) {
+            FraudCaseEntity kase = caseRepo.findById(claim.getCaseId()).orElse(null);
+            if (kase == null) {
+                continue;
+            }
+            boolean open = kase.getStatus() == CaseStatus.NEW || kase.getStatus() == CaseStatus.ENRICHING;
+            if (open && req.maskedCustomerRef().equals(kase.getMaskedCustomerRef())
+                    && req.issueType() == claim.getIssueType()) {
+                return summary(kase, claim);
+            }
+        }
+        return null;
+    }
+
+    /** Next ID derives from the highest existing case ID — safe across
+     *  restarts and gaps. The caseId primary key remains the hard guard;
+     *  concurrent creators may get a constraint violation rather than an
+     *  overwrite. */
     private String nextCaseId() {
-        return "CASE-2026-" + String.format("%04d", sequence.incrementAndGet()
-                + caseRepo.count());
+        int next = caseRepo.findTopByOrderByCaseIdDesc()
+                .map(FraudCaseEntity::getCaseId)
+                .map(id -> {
+                    int dash = id.lastIndexOf('-');
+                    try {
+                        return dash >= 0 ? Integer.parseInt(id.substring(dash + 1)) : 0;
+                    } catch (NumberFormatException e) {
+                        return 0;
+                    }
+                })
+                .orElse(0) + 1;
+        return "CASE-2026-" + String.format("%04d", next);
     }
 
     // ---- Reads --------------------------------------------------------

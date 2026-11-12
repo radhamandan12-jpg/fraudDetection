@@ -28,37 +28,42 @@ public class RecommendationEntity {
     private String mode;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(columnDefinition = "varchar(32)", nullable = false)
     private Classification classification;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(columnDefinition = "varchar(32)", nullable = false)
     private Route route;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(columnDefinition = "varchar(32)", nullable = false)
     private RiskLevel riskLevel;
 
     @Column(nullable = false)
     private double confidence;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String rationale;
 
     @Lob
+    @Column(columnDefinition = "TEXT")
     private String evidenceIdsJson;
 
     @Lob
+    @Column(columnDefinition = "TEXT")
     private String missingInformationJson;
 
     @Lob
+    @Column(columnDefinition = "TEXT")
     private String ruleIdsJson;
 
     @Lob
+    @Column(columnDefinition = "TEXT")
     private String toolTraceIdsJson;
 
     @Lob
+    @Column(columnDefinition = "TEXT")
     private String appliedRulesJson;
 
     @Column(nullable = false)

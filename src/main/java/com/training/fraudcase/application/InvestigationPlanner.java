@@ -16,7 +16,8 @@ public class InvestigationPlanner {
 
     private static final List<String> EVIDENCE_TOOLS = List.of(
             "getTransactionDetails", "getDeviceSignals", "compareRecentLocations",
-            "getMerchantRiskProfile", "getPriorDisputes");
+            "getMerchantRiskProfile", "getPriorDisputes", "getTransactionVelocity",
+            "checkAmountDeviation", "getSanctionsScreening");
 
     public InvestigationPlan plan(CaseFacts facts) {
         String goal = switch (facts.issueType()) {

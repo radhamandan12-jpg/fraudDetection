@@ -98,7 +98,10 @@ Scenario markers for reproducible demos (synthetic adapter):
 `TXN-FRAUD-*` (new device, distant location, auth unavailable), `TXN-DUP-*`
 (duplicate fingerprint), `TXN-GENUINE-*` (clean signals), `TXN-MISSING-*`
 (not found), merchant containing `BLOCK` (blocklist), customer containing
-`REPEAT` (prior disputes) / `TRUSTED` (clean device+location).
+`REPEAT` (prior disputes) / `TRUSTED` (clean device+location). Additional
+signals: `VELOCITY` in customer or txn ref (5+ txn in 10 minutes), `BIGAMT`
+in txn ref (claimed amount >5x baseline), `SANCTION` in customer or merchant
+ref (synthetic sanctions/PEP screening match → forced fraud review, R-008).
 
 ## Tests
 

@@ -175,6 +175,9 @@ public class InvestigationOrchestrator {
         results.add(tools.compareRecentLocations(facts.maskedCustomerRef(), facts.homeRegion(), facts.transactionRef()));
         results.add(tools.getMerchantRiskProfile(facts.maskedMerchant()));
         results.add(tools.getPriorDisputes(facts.maskedCustomerRef()));
+        results.add(tools.getTransactionVelocity(facts.maskedCustomerRef(), facts.transactionRef()));
+        results.add(tools.checkAmountDeviation(facts.maskedCustomerRef(), facts.amount(), facts.transactionRef()));
+        results.add(tools.getSanctionsScreening(facts.maskedCustomerRef(), facts.maskedMerchant()));
         return results;
     }
 

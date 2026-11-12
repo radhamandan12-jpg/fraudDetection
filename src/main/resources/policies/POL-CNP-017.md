@@ -4,6 +4,7 @@ title: Card-not-present unauthorised transactions
 version: "3.2"
 effectiveDate: 2026-01-15
 owner: Fraud Policy Office
+status: ACTIVE
 ---
 
 ## 3.1 Scope

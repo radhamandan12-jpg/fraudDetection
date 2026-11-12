@@ -7,6 +7,9 @@ VALIDATED CASE FACTS:
 TOOL EVIDENCE (structured results already collected by the approved tool plan):
 {toolEvidence}
 
+TOOL TRACES (cite traceId exactly as shown, or return an empty toolTraceIds list):
+{toolTraces}
+
 RETRIEVED POLICY PASSAGES (cite documentId, version, section, chunkId and score exactly):
 {policyContext}
 

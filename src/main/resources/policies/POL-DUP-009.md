@@ -4,6 +4,7 @@ title: Duplicate transaction processing
 version: "1.4"
 effectiveDate: 2025-09-01
 owner: Payments Operations Policy
+status: ACTIVE
 ---
 
 ## 1.1 Identification

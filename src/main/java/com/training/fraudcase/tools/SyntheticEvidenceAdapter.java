@@ -7,12 +7,15 @@ import com.training.fraudcase.domain.enums.TransactionChannel;
 import com.training.fraudcase.domain.enums.TransactionStatus;
 import com.training.fraudcase.domain.enums.TrustLevel;
 import com.training.fraudcase.support.Hashes;
+import com.training.fraudcase.tools.dto.AmountDeviation;
 import com.training.fraudcase.tools.dto.CaseSla;
 import com.training.fraudcase.tools.dto.DeviceSignals;
 import com.training.fraudcase.tools.dto.LocationComparison;
 import com.training.fraudcase.tools.dto.MerchantRiskProfile;
 import com.training.fraudcase.tools.dto.PriorDisputes;
+import com.training.fraudcase.tools.dto.ScreeningResult;
 import com.training.fraudcase.tools.dto.TransactionDetails;
+import com.training.fraudcase.tools.dto.TransactionVelocity;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -33,6 +36,9 @@ import java.util.List;
  *   MISSING -> transaction not found
  *   BLOCK   -> merchant blocklist match (maskedMerchant)
  *   REPEAT  -> several similar prior disputes (maskedCustomerRef)
+ *   VELOCITY-> 5+ transactions inside 10 minutes (maskedCustomerRef or contextRef)
+ *   BIGAMT  -> claimed amount >5x the customer baseline (transactionRef)
+ *   SANCTION-> sanctions/PEP screening match (maskedCustomerRef or maskedMerchant)
  * Otherwise values derive from a seeded hash of the inputs.
  */
 @Component
@@ -151,6 +157,53 @@ public class SyntheticEvidenceAdapter {
                 : count == 0 ? List.of("No prior disputes in lookback window")
                         : List.of(count + " prior dispute(s) in lookback window");
         return new PriorDisputes(count, Math.min(similar, count), 180, obs);
+    }
+
+    public TransactionVelocity transactionVelocity(String maskedCustomerRef, String contextRef) {
+        boolean burst = has(maskedCustomerRef, "VELOCITY") || has(contextRef, "VELOCITY");
+        int h = hash(maskedCustomerRef, "vel");
+        int count10 = burst ? 5 + h % 5 : h % 5;
+        int count60 = count10 + h % 12;
+        int baseline = 2 + h % 6;
+        AnomalyLevel level = count10 >= 5 ? AnomalyLevel.HIGH
+                : count10 >= 3 ? AnomalyLevel.MEDIUM
+                : count10 >= 2 ? AnomalyLevel.LOW : AnomalyLevel.NONE;
+        List<String> obs = count10 >= 5
+                ? List.of(count10 + " transactions inside 10 minutes",
+                        "Velocity burst exceeds the card-not-present review threshold")
+                : List.of(count10 + " transactions inside 10 minutes",
+                        "Velocity within normal training parameters");
+        return new TransactionVelocity(count10, count60, baseline, level, obs);
+    }
+
+    public AmountDeviation amountDeviation(String maskedCustomerRef, BigDecimal claimedAmount,
+                                           String contextRef) {
+        boolean big = has(contextRef, "BIGAMT") || has(maskedCustomerRef, "BIGAMT");
+        int h = hash(maskedCustomerRef, "amt");
+        BigDecimal claimed = claimedAmount != null ? claimedAmount : BigDecimal.valueOf(50);
+        BigDecimal median = big
+                ? claimed.divide(BigDecimal.valueOf(6 + h % 7), 2, RoundingMode.HALF_UP)
+                : claimed.multiply(BigDecimal.valueOf(0.75 + (h % 51) / 100.0))
+                        .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal ratio = claimed.divide(median, 2, RoundingMode.HALF_UP);
+        AnomalyLevel level = ratio.doubleValue() > 5.0 ? AnomalyLevel.HIGH
+                : ratio.doubleValue() > 2.5 ? AnomalyLevel.MEDIUM
+                : ratio.doubleValue() > 1.5 ? AnomalyLevel.LOW : AnomalyLevel.NONE;
+        List<String> obs = level == AnomalyLevel.HIGH
+                ? List.of("Claimed amount is " + ratio + "x the customer baseline median " + median,
+                        "Amount deviation exceeds the 5x review threshold")
+                : List.of("Claimed amount is " + ratio + "x the customer baseline median " + median);
+        return new AmountDeviation(ratio, median, level, obs);
+    }
+
+    public ScreeningResult sanctionsScreening(String maskedCustomerRef, String maskedMerchant) {
+        boolean match = has(maskedCustomerRef, "SANCTION") || has(maskedMerchant, "SANCTION");
+        List<String> obs = match
+                ? List.of("Synthetic screening hit on TRAINING-SDN-PEP list",
+                        "Match requires analyst confirmation — never an autonomous action")
+                : List.of("No synthetic sanctions/PEP match in training lists");
+        return new ScreeningResult(match, "TRAINING-SDN-PEP",
+                match ? "SANCTIONS_PEP" : "NONE", obs);
     }
 
     public CaseSla caseSla(String route, String riskLevel) {

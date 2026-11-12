@@ -24,19 +24,19 @@ public class EvidenceItemEntity {
     private String caseId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "varchar(32)")
     private EvidenceType type;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(columnDefinition = "varchar(32)", nullable = false)
     private Severity severity;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String valueSummary;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(columnDefinition = "varchar(32)", nullable = false)
     private Provenance provenance;
 
     @Column(nullable = false)

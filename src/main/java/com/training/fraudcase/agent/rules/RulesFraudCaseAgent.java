@@ -17,10 +17,14 @@ import com.training.fraudcase.domain.enums.ToolOutcome;
 import com.training.fraudcase.domain.enums.TrustLevel;
 import com.training.fraudcase.knowledge.PolicyRetriever;
 import com.training.fraudcase.tools.ToolResult;
+import com.training.fraudcase.tools.dto.AmountDeviation;
 import com.training.fraudcase.tools.dto.DeviceSignals;
 import com.training.fraudcase.tools.dto.LocationComparison;
 import com.training.fraudcase.tools.dto.MerchantRiskProfile;
+import com.training.fraudcase.tools.dto.PriorDisputes;
+import com.training.fraudcase.tools.dto.ScreeningResult;
 import com.training.fraudcase.tools.dto.TransactionDetails;
+import com.training.fraudcase.tools.dto.TransactionVelocity;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -56,6 +60,10 @@ public class RulesFraudCaseAgent implements FraudCaseProcessor {
         ToolResult<DeviceSignals> devRes = ctx.toolResult("getDeviceSignals", DeviceSignals.class);
         ToolResult<LocationComparison> locRes = ctx.toolResult("compareRecentLocations", LocationComparison.class);
         ToolResult<MerchantRiskProfile> mrcRes = ctx.toolResult("getMerchantRiskProfile", MerchantRiskProfile.class);
+        ToolResult<PriorDisputes> priRes = ctx.toolResult("getPriorDisputes", PriorDisputes.class);
+        ToolResult<TransactionVelocity> velRes = ctx.toolResult("getTransactionVelocity", TransactionVelocity.class);
+        ToolResult<AmountDeviation> amtRes = ctx.toolResult("checkAmountDeviation", AmountDeviation.class);
+        ToolResult<ScreeningResult> scrRes = ctx.toolResult("getSanctionsScreening", ScreeningResult.class);
 
         boolean txnAvailable = txnRes != null && txnRes.outcome() == ToolOutcome.OK
                 && txnRes.data() != null && txnRes.data().found();
@@ -66,9 +74,17 @@ public class RulesFraudCaseAgent implements FraudCaseProcessor {
         DeviceSignals dev = devRes != null ? devRes.data() : null;
         LocationComparison loc = locRes != null ? locRes.data() : null;
         MerchantRiskProfile mrc = mrcRes != null ? mrcRes.data() : null;
+        PriorDisputes pri = priRes != null ? priRes.data() : null;
+        TransactionVelocity vel = velRes != null ? velRes.data() : null;
+        AmountDeviation amt = amtRes != null ? amtRes.data() : null;
+        ScreeningResult scr = scrRes != null ? scrRes.data() : null;
         if (dev == null) missing.add("device signals");
         if (loc == null) missing.add("location comparison");
         if (mrc == null) missing.add("merchant risk profile");
+        if (pri == null) missing.add("prior disputes");
+        if (vel == null) missing.add("transaction velocity");
+        if (amt == null) missing.add("amount deviation");
+        if (scr == null) missing.add("sanctions screening");
 
         boolean deviceAnomaly = dev != null && (!dev.deviceKnown() || dev.trustLevel() == TrustLevel.LOW);
         boolean locationAnomaly = loc != null && loc.anomalyLevel() == AnomalyLevel.HIGH;
@@ -76,8 +92,11 @@ public class RulesFraudCaseAgent implements FraudCaseProcessor {
                 && (txnRes.data().authOutcome() == AuthOutcome.UNAVAILABLE
                     || txnRes.data().authOutcome() == AuthOutcome.FAILED);
         boolean merchantAnomaly = mrc != null && (mrc.blocklistMatch());
+        boolean velocityAnomaly = vel != null && vel.anomalyLevel() == AnomalyLevel.HIGH;
+        boolean amountAnomaly = amt != null && amt.anomalyLevel() == AnomalyLevel.HIGH;
         int independentAnomalies = (deviceAnomaly ? 1 : 0) + (locationAnomaly ? 1 : 0)
-                + (authAnomaly ? 1 : 0) + (merchantAnomaly ? 1 : 0);
+                + (authAnomaly ? 1 : 0) + (merchantAnomaly ? 1 : 0)
+                + (velocityAnomaly ? 1 : 0) + (amountAnomaly ? 1 : 0);
 
         Boolean recognised = ctx.facts().merchantRecognised();
         boolean denies = Boolean.FALSE.equals(recognised);
@@ -110,10 +129,21 @@ public class RulesFraudCaseAgent implements FraudCaseProcessor {
             risk = RiskLevel.MEDIUM;
             confidence = 0.95;
             rationale = "A matching payment fingerprint confirms duplicate processing; routed to payment operations.";
+        } else if (scr != null && scr.matchFound()) {
+            applied.add(new RuleApplication("R-008",
+                    "Sanctions/PEP screening match -> FRAUD_INVESTIGATION for analyst confirmation",
+                    List.of("matchFound=true", "listName=" + scr.listName())));
+            classification = Classification.UNAUTHORISED_TRANSACTION;
+            route = Route.FRAUD_INVESTIGATION;
+            risk = RiskLevel.HIGH;
+            confidence = 0.85;
+            rationale = "Synthetic sanctions/PEP screening matched " + scr.listName()
+                    + "; routed to fraud investigation pending analyst confirmation.";
         } else if (denies && independentAnomalies >= 2) {
             applied.add(new RuleApplication("R-004",
                     "Customer denies merchant plus >=2 independent high-severity anomalies -> FRAUD_INVESTIGATION",
-                    anomalyFacts(deviceAnomaly, locationAnomaly, authAnomaly, merchantAnomaly, recognised)));
+                    anomalyFacts(deviceAnomaly, locationAnomaly, authAnomaly, merchantAnomaly,
+                            velocityAnomaly, amountAnomaly, pri, recognised)));
             classification = Classification.UNAUTHORISED_TRANSACTION;
             route = Route.FRAUD_INVESTIGATION;
             risk = RiskLevel.HIGH;
@@ -122,7 +152,8 @@ public class RulesFraudCaseAgent implements FraudCaseProcessor {
         } else if (independentAnomalies >= 2 || (denies && independentAnomalies >= 1)) {
             applied.add(new RuleApplication("R-005",
                     "High-risk signals present but unauthorised use not established -> FRAUD_INVESTIGATION",
-                    anomalyFacts(deviceAnomaly, locationAnomaly, authAnomaly, merchantAnomaly, recognised)));
+                    anomalyFacts(deviceAnomaly, locationAnomaly, authAnomaly, merchantAnomaly,
+                            velocityAnomaly, amountAnomaly, pri, recognised)));
             classification = Classification.SUSPICIOUS_TRANSACTION;
             route = Route.FRAUD_INVESTIGATION;
             risk = RiskLevel.HIGH;
@@ -140,7 +171,8 @@ public class RulesFraudCaseAgent implements FraudCaseProcessor {
         } else if (independentAnomalies == 0) {
             applied.add(new RuleApplication("R-006",
                     "No anomalies and evidence supports authorised activity -> GENUINE_TRANSACTION, manual confirmation",
-                    anomalyFacts(deviceAnomaly, locationAnomaly, authAnomaly, merchantAnomaly, recognised)));
+                    anomalyFacts(deviceAnomaly, locationAnomaly, authAnomaly, merchantAnomaly,
+                            velocityAnomaly, amountAnomaly, pri, recognised)));
             classification = Classification.GENUINE_TRANSACTION;
             route = Route.MANUAL_REVIEW;
             risk = RiskLevel.LOW;
@@ -149,7 +181,8 @@ public class RulesFraudCaseAgent implements FraudCaseProcessor {
         } else {
             applied.add(new RuleApplication("R-900",
                     "Default: evidence insufficient or contradictory -> INSUFFICIENT_EVIDENCE, manual review",
-                    anomalyFacts(deviceAnomaly, locationAnomaly, authAnomaly, merchantAnomaly, recognised)));
+                    anomalyFacts(deviceAnomaly, locationAnomaly, authAnomaly, merchantAnomaly,
+                            velocityAnomaly, amountAnomaly, pri, recognised)));
             classification = Classification.INSUFFICIENT_EVIDENCE;
             route = Route.MANUAL_REVIEW;
             risk = RiskLevel.MEDIUM;
@@ -209,10 +242,14 @@ public class RulesFraudCaseAgent implements FraudCaseProcessor {
         return sb.toString();
     }
 
-    private List<String> anomalyFacts(boolean dev, boolean loc, boolean auth, boolean mrc, Boolean recognised) {
+    private List<String> anomalyFacts(boolean dev, boolean loc, boolean auth, boolean mrc,
+                                      boolean vel, boolean amt, PriorDisputes pri,
+                                      Boolean recognised) {
         return List.of(
                 "deviceAnomaly=" + dev, "locationAnomaly=" + loc,
                 "authAnomaly=" + auth, "merchantAnomaly=" + mrc,
+                "velocityAnomaly=" + vel, "amountAnomaly=" + amt,
+                "priorSimilarDisputes=" + (pri != null ? pri.similarCount() : "unknown"),
                 "merchantRecognised=" + recognised);
     }
 

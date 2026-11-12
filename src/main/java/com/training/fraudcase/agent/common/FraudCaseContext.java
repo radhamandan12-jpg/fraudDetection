@@ -48,6 +48,7 @@ public record FraudCaseContext(
         vars.put("caseSummary", renderCaseSummary());
         vars.put("investigationGoal", investigationGoal);
         vars.put("toolEvidence", renderToolEvidence());
+        vars.put("toolTraces", renderToolTraces());
         vars.put("policyContext", renderPolicyContext());
         vars.put("conversationContext", renderConversation());
         return vars;
@@ -58,6 +59,7 @@ public record FraudCaseContext(
         return "INVESTIGATION GOAL:\n" + investigationGoal + "\n\n"
                 + "CASE FACTS:\n" + renderCaseSummary() + "\n\n"
                 + "TOOL EVIDENCE:\n" + renderToolEvidence() + "\n\n"
+                + "TOOL TRACES:\n" + renderToolTraces() + "\n\n"
                 + "RETRIEVED POLICY PASSAGES:\n" + renderPolicyContext() + "\n\n"
                 + "CONVERSATION CONTEXT:\n" + renderConversation() + "\n\n"
                 + "Return only the agreed JSON schema.";
@@ -87,6 +89,18 @@ public record FraudCaseContext(
                 .map(e -> "- [" + e.evidenceId() + "] " + e.type() + "/" + e.severity()
                         + " via " + (e.sourceTool() == null ? "?" : e.sourceTool())
                         + ": " + e.valueSummary())
+                .collect(Collectors.joining("\n"));
+    }
+
+    /** Trace IDs are exposed so a model may cite only traces that exist —
+     *  anything invented fails referential-integrity validation. */
+    public String renderToolTraces() {
+        if (toolTraces.isEmpty()) {
+            return "(no tool traces recorded — return an empty toolTraceIds list)";
+        }
+        return toolTraces.stream()
+                .map(t -> "- [" + t.traceId() + "] " + t.toolName() + " " + t.status()
+                        + " " + t.durationMs() + "ms: " + t.resultSummary())
                 .collect(Collectors.joining("\n"));
     }
 

@@ -23,6 +23,14 @@
 ## Synthetic adapter markers
 
 `SyntheticEvidenceAdapter` keys deterministic results on markers in refs:
-`FRAUD`, `DUP`, `GENUINE`, `MISSING`, `BLOCK`, `REPEAT`, `TRUSTED`, `DISTANT`, `LOCAL`, `NEWDEV`.
+`FRAUD`, `DUP`, `GENUINE`, `MISSING`, `BLOCK`, `REPEAT`, `TRUSTED`, `DISTANT`, `LOCAL`, `NEWDEV`,
+`VELOCITY` (txn burst in customer/txn ref), `BIGAMT` (>5x amount deviation in txn ref),
+`SANCTION` (screening match in customer/merchant ref).
 Otherwise values derive from `capstone.tools.deterministic-seed` + input hash.
 Update this list AND the docs when adding markers.
+
+Policy docs carry `status:` front matter (`ACTIVE` default); `RETIRED` or
+expired (`expiryDate` past) docs are excluded from the retrieval corpus.
+`RecommendationValidator` enforces referential integrity: `evidenceIds`,
+`toolTraceIds` and `policyCitations` must exist in the supplied
+`FraudCaseContext`; `ruleIds`/`appliedRules` must match `R-\d{3}`.

@@ -194,6 +194,23 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void duplicateIntakeReturnsOpenCase() throws Exception {
+        var body = intake("TXN-DEDUP-5001", "UNRECOGNISED_TRANSACTION", false);
+        String first = createCase(body);
+        String second = createCase(body);
+        assertEquals(first, second, "identical open intake should return the existing case");
+    }
+
+    @Test
+    void caseIdsAreUniqueAndSequentialAcrossCreates() throws Exception {
+        String a = createCase(intake("TXN-DEDUP-5002", "UNRECOGNISED_TRANSACTION", false));
+        String b = createCase(intake("TXN-DEDUP-5003", "UNRECOGNISED_TRANSACTION", false));
+        assertTrue(!a.equals(b), "each new claim must get a distinct caseId");
+        assertTrue(a.matches("CASE-\\d{4}-\\d{4}"));
+        assertTrue(b.matches("CASE-\\d{4}-\\d{4}"));
+    }
+
+    @Test
     void missingInfoRequestKeepsUnderReview() throws Exception {
         String caseId = createCase(intake("TXN-FRAUD-0042", "UNRECOGNISED_TRANSACTION", false));
         mvc.perform(post("/api/cases/{id}/investigations", caseId));

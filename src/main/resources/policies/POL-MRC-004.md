@@ -4,6 +4,7 @@ title: Merchant and billing disputes
 version: "2.1"
 effectiveDate: 2025-11-20
 owner: Disputes Policy Office
+status: ACTIVE
 ---
 
 ## 2.1 Scope

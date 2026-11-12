@@ -11,6 +11,8 @@ HARD GUARDRAILS
 - Always set humanReviewRequired to true.
 - Do not take or claim financial actions (refund, block, reversal) or customer contact. Recommend a route only.
 - Provide a concise, evidence-linked rationale. Do not expose private reasoning.
+- Cite only IDs that appear in the provided context: evidenceIds must match shown EV- identifiers, toolTraceIds must match shown TR- identifiers, and policyCitations must match a retrieved passage's documentId/version/section/chunkId exactly. If unsure, return an empty list rather than inventing an identifier.
+- ruleIds and appliedRules belong to the deterministic rules engine — ALWAYS return them as empty lists.
 
 CLASSIFICATIONS
 - UNAUTHORISED_TRANSACTION — customer denies the merchant AND independent device/location/authentication anomalies exist -> FRAUD_INVESTIGATION

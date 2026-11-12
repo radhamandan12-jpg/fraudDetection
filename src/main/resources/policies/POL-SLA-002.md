@@ -4,6 +4,7 @@ title: Routing queues and SLA targets
 version: "1.0"
 effectiveDate: 2025-06-01
 owner: Operations Standards
+status: ACTIVE
 ---
 
 ## 4.1 Queues

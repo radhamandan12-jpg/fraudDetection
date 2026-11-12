@@ -24,10 +24,11 @@ public class FraudCaseEntity {
     private String homeRegion;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(columnDefinition = "varchar(32)", nullable = false)
     private CaseStatus status;
 
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "varchar(32)")
     private CaseChannel caseChannel;
 
     @Column(nullable = false)

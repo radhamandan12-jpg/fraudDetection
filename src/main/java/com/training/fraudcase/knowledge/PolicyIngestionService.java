@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,12 +24,16 @@ import java.util.Map;
  * version: 3.2
  * effectiveDate: 2026-01-15
  * owner: Fraud Policy Office
+ * status: ACTIVE
+ * expiryDate: 2027-01-15
  * ---
  * ## 3.1 Scope
  * ...
  * </pre>
  * Documents are validated (all metadata required) then split on '## '
  * headings so a rule is never broken across unrelated chunks.
+ * Lifecycle: status defaults to ACTIVE when absent; RETIRED documents and
+ * documents past their expiryDate are excluded from the retrievable corpus.
  */
 @Service
 public class PolicyIngestionService {
@@ -58,6 +63,24 @@ public class PolicyIngestionService {
             throw new PolicyIngestionException("Cannot read " + resource.getFilename());
         }
         PolicyDocumentMeta meta = parseFrontMatter(body, resource.getFilename());
+        if ("RETIRED".equalsIgnoreCase(meta.status())) {
+            log.info("Skipping retired policy document {}", meta.documentId());
+            return List.of();
+        }
+        if (meta.expiryDate() != null && !meta.expiryDate().isBlank()) {
+            LocalDate expiry;
+            try {
+                expiry = LocalDate.parse(meta.expiryDate().trim());
+            } catch (java.time.format.DateTimeParseException e) {
+                throw new PolicyIngestionException(
+                        "Policy " + resource.getFilename() + " has unparseable expiryDate: "
+                                + meta.expiryDate());
+            }
+            if (expiry.isBefore(LocalDate.now())) {
+                log.info("Skipping expired policy document {} (expired {})", meta.documentId(), expiry);
+                return List.of();
+            }
+        }
         return split(meta, stripFrontMatter(body));
     }
 
@@ -80,9 +103,12 @@ public class PolicyIngestionService {
                 fields.put(line.substring(0, colon).trim(), value);
             }
         }
+        String status = fields.get("status");
         PolicyDocumentMeta meta = new PolicyDocumentMeta(
                 fields.get("documentId"), fields.get("title"), fields.get("version"),
-                fields.get("effectiveDate"), fields.get("owner"));
+                fields.get("effectiveDate"), fields.get("owner"),
+                status == null || status.isBlank() ? "ACTIVE" : status.trim(),
+                fields.get("expiryDate"));
         if (meta.documentId() == null || meta.title() == null || meta.version() == null
                 || meta.effectiveDate() == null || meta.owner() == null) {
             throw new PolicyIngestionException(

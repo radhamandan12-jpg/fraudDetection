@@ -11,12 +11,15 @@ import com.training.fraudcase.domain.enums.Severity;
 import com.training.fraudcase.domain.enums.ToolOutcome;
 import com.training.fraudcase.domain.enums.TrustLevel;
 import com.training.fraudcase.tools.ToolResult;
+import com.training.fraudcase.tools.dto.AmountDeviation;
 import com.training.fraudcase.tools.dto.CaseSla;
 import com.training.fraudcase.tools.dto.DeviceSignals;
 import com.training.fraudcase.tools.dto.LocationComparison;
 import com.training.fraudcase.tools.dto.MerchantRiskProfile;
 import com.training.fraudcase.tools.dto.PriorDisputes;
+import com.training.fraudcase.tools.dto.ScreeningResult;
 import com.training.fraudcase.tools.dto.TransactionDetails;
+import com.training.fraudcase.tools.dto.TransactionVelocity;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -45,6 +48,20 @@ public class EvidenceFactory {
                 merchant(items, d);
             } else if (r.data() instanceof PriorDisputes d) {
                 history(items, d);
+            } else if (r.data() instanceof TransactionVelocity d) {
+                items.add(item(EvidenceType.VELOCITY, anomalySeverity(d.anomalyLevel()),
+                        "Velocity: " + d.countLast10Min() + " txn/10min, " + d.countLast60Min()
+                                + " txn/60min vs baseline " + d.baselineDailyCount() + "/day",
+                        r.toolName()));
+            } else if (r.data() instanceof AmountDeviation d) {
+                items.add(item(EvidenceType.TRANSACTION, anomalySeverity(d.anomalyLevel()),
+                        "Amount deviation " + d.ratioVsBaseline() + "x baseline median "
+                                + d.baselineMedian(), r.toolName()));
+            } else if (r.data() instanceof ScreeningResult d) {
+                items.add(item(EvidenceType.SCREENING, d.matchFound() ? Severity.HIGH : Severity.INFO,
+                        d.matchFound()
+                                ? "Screening match on " + d.listName() + " (" + d.matchCategory() + ")"
+                                : "No screening match (" + d.listName() + ")", r.toolName()));
             } else if (r.data() instanceof CaseSla d) {
                 items.add(item(EvidenceType.SLA, Severity.INFO,
                         "SLA " + d.priority() + " for queue " + d.queue() + " target " + d.targetAt(),
@@ -139,6 +156,15 @@ public class EvidenceFactory {
         items.add(item(EvidenceType.HISTORY, sev,
                 d.count() + " prior dispute(s), " + d.similarCount() + " similar, lookback "
                         + d.lookbackDays() + " days", "getPriorDisputes"));
+    }
+
+    private static Severity anomalySeverity(AnomalyLevel level) {
+        return switch (level) {
+            case HIGH -> Severity.HIGH;
+            case MEDIUM -> Severity.MEDIUM;
+            case LOW -> Severity.LOW;
+            case NONE -> Severity.INFO;
+        };
     }
 
     private EvidenceItemView item(EvidenceType type, Severity sev, String summary, String tool) {

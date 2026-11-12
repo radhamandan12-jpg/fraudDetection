@@ -60,4 +60,18 @@ class LexicalPolicyRetrieverTest {
         List<PolicyPassage> hits = retriever.retrieve("transaction dispute merchant review manual routing");
         assertTrue(hits.size() <= retriever.topK());
     }
+
+    @Test
+    void retiredPolicyNeverRetrieved() {
+        List<PolicyPassage> hits = retriever.retrieve(
+                "legacy manual callback verification outbound call customer before classification");
+        assertTrue(hits.stream().noneMatch(p -> p.documentId().equals("POL-LEG-001")),
+                "retired document must be excluded from the retrieval corpus");
+    }
+
+    @Test
+    void duplicateQueryDoesNotMatchRetiredContent() {
+        List<PolicyPassage> hits = retriever.retrieve("outbound call verification procedure");
+        assertTrue(hits.stream().noneMatch(p -> p.documentId().equals("POL-LEG-001")));
+    }
 }

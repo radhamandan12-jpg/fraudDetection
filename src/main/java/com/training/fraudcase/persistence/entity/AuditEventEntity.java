@@ -24,7 +24,7 @@ public class AuditEventEntity {
     private String eventType;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(columnDefinition = "varchar(32)", nullable = false)
     private ActorType actorType;
 
     @Column(nullable = false)

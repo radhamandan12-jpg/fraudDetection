@@ -29,13 +29,14 @@ public class ToolTraceEntity {
     private String requestHash;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(columnDefinition = "varchar(32)", nullable = false)
     private ToolOutcome status;
 
     @Column(nullable = false)
     private long durationMs;
 
     @Lob
+    @Column(columnDefinition = "TEXT")
     private String resultSummary;
 
     @Column(nullable = false)

@@ -40,7 +40,10 @@ class RulesFraudCaseAgentTest {
                 ok("getDeviceSignals", adapter.deviceSignals(f.maskedCustomerRef(), f.transactionRef())),
                 ok("compareRecentLocations", adapter.recentLocations(f.maskedCustomerRef(), f.homeRegion(), f.transactionRef())),
                 ok("getMerchantRiskProfile", adapter.merchantRisk(f.maskedMerchant())),
-                ok("getPriorDisputes", adapter.priorDisputes(f.maskedCustomerRef())));
+                ok("getPriorDisputes", adapter.priorDisputes(f.maskedCustomerRef())),
+                ok("getTransactionVelocity", adapter.transactionVelocity(f.maskedCustomerRef(), f.transactionRef())),
+                ok("checkAmountDeviation", adapter.amountDeviation(f.maskedCustomerRef(), f.amount(), f.transactionRef())),
+                ok("getSanctionsScreening", adapter.sanctionsScreening(f.maskedCustomerRef(), f.maskedMerchant())));
     }
 
     @Test
@@ -110,6 +113,31 @@ class RulesFraudCaseAgentTest {
         assertTrue(r.ruleIds().contains("R-007"));
         assertTrue(r.missingInformation().stream().anyMatch(m -> m.contains("policy")));
         assertTrue(r.policyCitations().isEmpty());
+    }
+
+    @Test
+    void screeningMatchForcesFraudInvestigation() {
+        CaseFacts f = facts("C7", "TXN-MERCH-77", IssueType.UNRECOGNISED_TRANSACTION, false,
+                "CUST-8842", "MRC-SANCTION-1");
+        FraudCaseRecommendation r = agent(List.of(passage()))
+                .analyze(ctx(f, List.of(), List.of(passage()), toolResults(f)));
+
+        assertEquals(Classification.UNAUTHORISED_TRANSACTION, r.classification());
+        assertEquals(Route.FRAUD_INVESTIGATION, r.recommendedRoute());
+        assertTrue(r.ruleIds().contains("R-008"));
+    }
+
+    @Test
+    void velocityAndAmountMarkersFeedAnomalies() {
+        CaseFacts f = facts("C8", "TXN-MERCH-VELOCITY-BIGAMT", IssueType.UNRECOGNISED_TRANSACTION, true,
+                "CUST-8842", "MRC-SHOP-12");
+        FraudCaseRecommendation r = agent(List.of(passage()))
+                .analyze(ctx(f, List.of(), List.of(passage()), toolResults(f)));
+
+        // 2+ anomalies without denial -> SUSPICIOUS via R-005
+        assertEquals(Classification.SUSPICIOUS_TRANSACTION, r.classification());
+        assertEquals(Route.FRAUD_INVESTIGATION, r.recommendedRoute());
+        assertTrue(r.ruleIds().contains("R-005"));
     }
 
     @Test

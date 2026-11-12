@@ -6,5 +6,7 @@ public record PolicyDocumentMeta(
         String title,
         String version,
         String effectiveDate,
-        String owner
+        String owner,
+        String status,
+        String expiryDate
 ) {}

@@ -12,3 +12,8 @@ classes/
 generated-sources/
 generated-test-sources/
 *.log
+
+# Local secrets / environment files
+.env
+.env.*
+!.env.example

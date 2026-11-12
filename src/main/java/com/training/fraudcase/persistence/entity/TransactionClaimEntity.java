@@ -37,22 +37,25 @@ public class TransactionClaimEntity {
     private Instant occurredAt;
 
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "varchar(32)")
     private TransactionStatus transactionStatus;
 
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "varchar(32)")
     private TransactionChannel transactionChannel;
 
     private String maskedMerchant;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(columnDefinition = "varchar(32)", nullable = false)
     private IssueType issueType;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String statement;
 
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "varchar(32)")
     private CardPossession cardPossession;
 
     private Boolean merchantRecognised;

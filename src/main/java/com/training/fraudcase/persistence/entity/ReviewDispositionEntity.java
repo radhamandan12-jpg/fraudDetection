@@ -26,16 +26,17 @@ public class ReviewDispositionEntity {
     private String reviewerId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(columnDefinition = "varchar(32)", nullable = false)
     private Disposition disposition;
 
     /** Mandatory reviewer reason. */
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String reason;
 
     /** Route chosen when disposition is ACCEPTED or REROUTED. */
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "varchar(32)")
     private Route selectedRoute;
 
     @Column(nullable = false)
